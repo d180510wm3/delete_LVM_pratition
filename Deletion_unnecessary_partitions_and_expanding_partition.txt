@@ -1,0 +1,345 @@
+
+
+# This is an operation process, recording the deletion of unnecessary partitions in a Linux system and expanding the freed-up space to the system's root partition.
+# Our goal is to remove the following partitions created by scripts or automated installation systems:
+
+        ├─rhel-swap       253:1    0    2G  0 lvm  [SWAP]
+        ├─rhel-var_chrash 253:2    0    2G  0 lvm  /var/chrash
+        ├─rhel-tmp        253:3    0    5G  0 lvm  /tmp
+        ├─rhel-home       253:4    0   10G  0 lvm  /home
+        ├─rhel-opt        253:5    0    5G  0 lvm  /opt
+        ├─rhel-var_tmp    253:6    0    1G  0 lvm  /var/tmp
+
+[root@calvin_wang ~]# cat /etc/os-release
+NAME="Red Hat Enterprise Linux"
+VERSION="9.2 (Plow)"
+ID="rhel"
+ID_LIKE="fedora"
+VERSION_ID="9.2"
+PLATFORM_ID="platform:el9"
+PRETTY_NAME="Red Hat Enterprise Linux 9.2 (Plow)"
+ANSI_COLOR="0;31"
+LOGO="fedora-logo-icon"
+CPE_NAME="cpe:/o:redhat:enterprise_linux:9::baseos"
+HOME_URL="https://www.redhat.com/"
+DOCUMENTATION_URL="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9"
+BUG_REPORT_URL="https://bugzilla.redhat.com/"
+REDHAT_BUGZILLA_PRODUCT="Red Hat Enterprise Linux 9"
+REDHAT_BUGZILLA_PRODUCT_VERSION=9.2
+REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux"
+REDHAT_SUPPORT_PRODUCT_VERSION="9.2"
+
+[root@calvin_wang ~]# lsblk
+
+NAME                MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sr0                  11:0    1 1024M  0 rom
+nvme0n1             259:0    0   50G  0 disk
+├─nvme0n1p1         259:1    0  600M  0 part /boot/efi
+├─nvme0n1p2         259:2    0    1G  0 part /boot
+└─nvme0n1p3         259:3    0   40G  0 part
+  ├─rhel-root       253:0    0   10G  0 lvm  /
+  ├─rhel-swap       253:1    0    2G  0 lvm  [SWAP]
+  ├─rhel-var_chrash 253:2    0    2G  0 lvm  /var/chrash
+  ├─rhel-tmp        253:3    0    5G  0 lvm  /tmp
+  ├─rhel-home       253:4    0   10G  0 lvm  /home
+  ├─rhel-opt        253:5    0    5G  0 lvm  /opt
+  ├─rhel-var_tmp    253:6    0    1G  0 lvm  /var/tmp
+  └─rhel-mvd        253:7    0    5G  0 lvm  /mvd
+
+[root@calvin_wang ~]# free -h
+               total        used        free      shared  buff/cache   available
+Mem:           1.7Gi       432Mi       1.3Gi       5.0Mi       184Mi       1.3Gi
+Swap:          2.0Gi          0B       2.0Gi
+[root@calvin_wang ~]# swapoff -a
+[root@calvin_wang ~]# umount /dev/rhel/home
+[root@calvin_wang ~]# umount /dev/rhel/opt
+[root@calvin_wang ~]# umount /dev/rhel/var_chrash
+[root@calvin_wang ~]# umount /dev/rhel/var_tmp
+[root@calvin_wang ~]# vi /etc/fstab
+# delete any line include: swap, home, opt, var_chrash, var_tmp
+
+[root@calvin_wang ~]# cat /etc/fstab
+/dev/mapper/rhel-root   /                       xfs     defaults        0 0
+UUID=b5e19aa3-729e-4a29-80ec-67a05e49a78e /boot                   xfs     defaults        0 0
+UUID=473F-28D6          /boot/efi               vfat    umask=0077,shortname=winnt 0 2
+/dev/mapper/rhel-mvd    /mvd                    xfs     defaults        0 0
+
+[root@calvin_wang ~]# vi /etc/default/grub
+ # delete any "swap" in "GRUB_CMDLINE_LINUX= " line, like "rd.lvm.lv=rhel/swap"
+
+[root@calvin_wang ~]# cat /etc/default/grub
+GRUB_TIMEOUT=5
+GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
+GRUB_DEFAULT=saved
+GRUB_DISABLE_SUBMENU=true
+GRUB_TERMINAL_OUTPUT="console"
+GRUB_CMDLINE_LINUX="crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M rd.lvm.lv=rhel/root"
+GRUB_DISABLE_RECOVERY="true"
+GRUB_ENABLE_BLSCFG=true
+[root@calvin_wang ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
+Generating grub configuration file ...
+File descriptor 3 (pipe:[27875]) leaked on vgs invocation. Parent PID 2327: grub2-probe
+File descriptor 9 (pipe:[27902]) leaked on vgs invocation. Parent PID 2327: grub2-probe
+File descriptor 3 (pipe:[27875]) leaked on vgs invocation. Parent PID 2327: grub2-probe
+File descriptor 9 (pipe:[27902]) leaked on vgs invocation. Parent PID 2327: grub2-probe
+File descriptor 3 (pipe:[27875]) leaked on vgs invocation. Parent PID 2476: grub2-probe
+File descriptor 9 (pipe:[27902]) leaked on vgs invocation. Parent PID 2476: grub2-probe
+File descriptor 3 (pipe:[27875]) leaked on vgs invocation. Parent PID 2476: grub2-probe
+File descriptor 9 (pipe:[27902]) leaked on vgs invocation. Parent PID 2476: grub2-probe
+File descriptor 3 (pipe:[27875]) leaked on vgs invocation. Parent PID 2585: grub2-probe
+File descriptor 9 (pipe:[27902]) leaked on vgs invocation. Parent PID 2585: grub2-probe
+File descriptor 3 (pipe:[27875]) leaked on vgs invocation. Parent PID 2585: grub2-probe
+File descriptor 9 (pipe:[27902]) leaked on vgs invocation. Parent PID 2585: grub2-probe
+File descriptor 3 (pipe:[27875]) leaked on vgs invocation. Parent PID 2667: grub2-probe
+File descriptor 9 (pipe:[27902]) leaked on vgs invocation. Parent PID 2667: grub2-probe
+File descriptor 3 (pipe:[27875]) leaked on vgs invocation. Parent PID 2667: grub2-probe
+File descriptor 9 (pipe:[27902]) leaked on vgs invocation. Parent PID 2667: grub2-probe
+Adding boot menu entry for UEFI Firmware Settings ...
+done
+[root@calvin_wang ~]# lvremove /dev/rhel/swap
+Do you really want to remove active logical volume rhel/swap? [y/n]: y
+  Logical volume "swap" successfully removed.
+[root@calvin_wang ~]# lvremove /dev/rhel/opt
+Do you really want to remove active logical volume rhel/opt? [y/n]: y
+  Logical volume "opt" successfully removed.
+[root@calvin_wang ~]# lvremove /dev/rhel/home
+Do you really want to remove active logical volume rhel/home? [y/n]: y
+  Logical volume "home" successfully removed.
+[root@calvin_wang ~]# lvremove /dev/rhel/var_chrash
+Do you really want to remove active logical volume rhel/var_chrash? [y/n]: y
+  Logical volume "var_chrash" successfully removed.
+[root@calvin_wang ~]# lvremove /dev/rhel/var_tmp
+  Logical volume rhel/var_tmp contains a filesystem in use.
+[root@calvin_wang ~]# lvremove /dev/rhel/
+mvd      root     tmp      var_tmp
+[root@calvin_wang ~]# lvremove /dev/rhel/tmp
+  Logical volume rhel/tmp contains a filesystem in use.
+[root@calvin_wang ~]# dracut -f   <--- create new kernel image after update lvm
+[root@calvin_wang ~]# reboot
+
+Need reboot OS, then Remove /dev/rhel/tmp and /dev/rhel/var_tmp:
+
+[root@calvin_wang ~]# df -h
+Filesystem             Size  Used Avail Use% Mounted on
+devtmpfs               4.0M     0  4.0M   0% /dev
+tmpfs                  876M     0  876M   0% /dev/shm
+tmpfs                  351M  5.2M  345M   2% /run
+/dev/mapper/rhel-root   10G  1.2G  8.8G  12% /
+/dev/nvme0n1p2        1014M  213M  802M  21% /boot
+/dev/nvme0n1p1         599M  7.0M  592M   2% /boot/efi
+/dev/mapper/rhel-mvd   5.0G   68M  5.0G   2% /mvd
+tmpfs                  176M     0  176M   0% /run/user/0
+
+[root@calvin_wang ~]# lvremove /dev/rhel/tmp
+Do you really want to remove active logical volume rhel/tmp? [y/n]: y
+  Logical volume "tmp" successfully removed.
+[root@calvin_wang ~]# lvremove /dev/rhel/var_tmp
+Do you really want to remove active logical volume rhel/var_tmp? [y/n]: y
+  Logical volume "var_tmp" successfully removed.
+[root@calvin_wang ~]# lvdisplay
+  --- Logical volume ---
+  LV Path                /dev/rhel/root
+  LV Name                root
+  VG Name                rhel
+  LV UUID                93lTKB-HPta-9j2z-fgHB-sDDN-0111-LVxVeD
+  LV Write Access        read/write
+  LV Creation host, time calvin_wang.localdomain, 2026-07-21 20:22:13 +0800
+  LV Status              available
+  # open                 1
+  LV Size                10.00 GiB
+  Current LE             2560
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:0
+
+  --- Logical volume ---
+  LV Path                /dev/rhel/mvd
+  LV Name                mvd
+  VG Name                rhel
+  LV UUID                OIeekk-QXUa-0O3h-u2hl-P123-IOq3-TckYV6
+  LV Write Access        read/write
+  LV Creation host, time calvin_wang.localdomain, 2026-07-21 20:22:13 +0800
+  LV Status              available
+  # open                 1
+  LV Size                5.00 GiB
+  Current LE             1280
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:3
+
+[root@calvin_wang ~]# lsblk
+NAME          MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sr0            11:0    1 1024M  0 rom
+nvme0n1       259:0    0   50G  0 disk
+├─nvme0n1p1   259:1    0  600M  0 part /boot/efi
+├─nvme0n1p2   259:2    0    1G  0 part /boot
+└─nvme0n1p3   259:3    0   40G  0 part
+  ├─rhel-root 253:0    0   10G  0 lvm  /
+  └─rhel-mvd  253:3    0    5G  0 lvm  /mvd
+[root@calvin_wang ~]# dracut -f <---  After remove /tmp and var_tmp, need regenerate kernel image, then reboot 2nd time.
+[root@calvin_wang ~]# reboot
+
+[root@calvin_wang ~]# lsblk
+NAME          MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sr0            11:0    1 1024M  0 rom
+nvme0n1       259:0    0   50G  0 disk
+├─nvme0n1p1   259:1    0  600M  0 part /boot/efi
+├─nvme0n1p2   259:2    0    1G  0 part /boot
+└─nvme0n1p3   259:3    0   40G  0 part
+  ├─rhel-root 253:0    0   10G  0 lvm  /
+  └─rhel-mvd  253:1    0    5G  0 lvm  /mvd
+[root@calvin_wang ~]# df -h
+Filesystem             Size  Used Avail Use% Mounted on
+devtmpfs               4.0M     0  4.0M   0% /dev
+tmpfs                  876M     0  876M   0% /dev/shm
+tmpfs                  351M  5.2M  345M   2% /run
+/dev/mapper/rhel-root   10G  1.2G  8.8G  12% /
+/dev/nvme0n1p2        1014M  213M  802M  21% /boot
+/dev/nvme0n1p1         599M  7.0M  592M   2% /boot/efi
+/dev/mapper/rhel-mvd   5.0G   68M  5.0G   2% /mvd
+tmpfs                  176M     0  176M   0% /run/user/0
+[root@calvin_wang ~]# lvdisplay
+  --- Logical volume ---
+  LV Path                /dev/rhel/root
+  LV Name                root
+  VG Name                rhel
+  LV UUID                93lTKB-HPta-9j2z-fgHB-sDDN-0111-LVxVeD
+  LV Write Access        read/write
+  LV Creation host, time calvin_wang.localdomain, 2026-07-21 20:22:13 +0800
+  LV Status              available
+  # open                 1
+  LV Size                10.00 GiB
+  Current LE             2560
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:0
+
+  --- Logical volume ---
+  LV Path                /dev/rhel/mvd
+  LV Name                mvd
+  VG Name                rhel
+  LV UUID                OIeekk-QXUa-0O3h-u2hl-P123-IOq3-TckYV6
+  LV Write Access        read/write
+  LV Creation host, time calvin_wang.localdomain, 2026-07-21 20:22:13 +0800
+  LV Status              available
+  # open                 1
+  LV Size                5.00 GiB
+  Current LE             1280
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:1
+
+[root@calvin_wang ~]# lvextend -l +100%FREE /dev/rhel/root   <--- extend all free disk space for /
+  Size of logical volume rhel/root changed from 10.00 GiB (2560 extents) to <35.03 GiB (8967 extents).
+  Logical volume rhel/root successfully resized.
+[root@calvin_wang ~]# xfs_growfs /
+meta-data=/dev/mapper/rhel-root  isize=512    agcount=4, agsize=655360 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=1, sparse=1, rmapbt=0
+         =                       reflink=1    bigtime=1 inobtcount=1
+data     =                       bsize=4096   blocks=2621440, imaxpct=25
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0, ftype=1
+log      =internal log           bsize=4096   blocks=2560, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+data blocks changed from 2621440 to 9182208
+
+[root@calvin_wang ~]# df -h
+Filesystem             Size  Used Avail Use% Mounted on
+devtmpfs               4.0M     0  4.0M   0% /dev
+tmpfs                  876M     0  876M   0% /dev/shm
+tmpfs                  351M  5.1M  345M   2% /run
+/dev/mapper/rhel-root   36G  1.4G   34G   4% /
+/dev/nvme0n1p2        1014M  213M  802M  21% /boot
+/dev/nvme0n1p1         599M  7.0M  592M   2% /boot/efi
+/dev/mapper/rhel-mvd   5.0G   68M  5.0G   2% /mvd
+tmpfs                  176M     0  176M   0% /run/user/0
+[root@calvin_wang ~]# lsblk
+NAME          MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sr0            11:0    1 1024M  0 rom
+nvme0n1       259:0    0   50G  0 disk
+├─nvme0n1p1   259:1    0  600M  0 part /boot/efi
+├─nvme0n1p2   259:2    0    1G  0 part /boot
+└─nvme0n1p3   259:3    0   40G  0 part
+  ├─rhel-root 253:0    0   35G  0 lvm  /
+  └─rhel-mvd  253:1    0    5G  0 lvm  /mvd
+
+[root@calvin_wang ~]# pvdisplay
+  --- Physical volume ---
+  PV Name               /dev/nvme0n1p3
+  VG Name               rhel
+  PV Size               40.03 GiB / not usable 4.00 MiB
+  Allocatable           yes (but full)
+  PE Size               4.00 MiB
+  Total PE              10247
+  Free PE               0
+  Allocated PE          10247
+  PV UUID               mKEgNN-fEbC-nsUt-fqxW-5rAr-w59M-U3lpxM
+
+[root@calvin_wang ~]# vgdisplay
+  --- Volume group ---
+  VG Name               rhel
+  System ID
+  Format                lvm2
+  Metadata Areas        1
+  Metadata Sequence No  16
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                2
+  Open LV               2
+  Max PV                0
+  Cur PV                1
+  Act PV                1
+  VG Size               <40.03 GiB
+  PE Size               4.00 MiB
+  Total PE              10247
+  Alloc PE / Size       10247 / <40.03 GiB
+  Free  PE / Size       0 / 0
+  VG UUID               3p9ggL-ThFh-IxzU-3H4f-7uDV-RhP8-xQIf4t
+
+[root@calvin_wang ~]# lvdisplay
+  --- Logical volume ---
+  LV Path                /dev/rhel/root
+  LV Name                root
+  VG Name                rhel
+  LV UUID                93lTKB-HPta-9j2z-fgHB-sDDN-0111-LVxVeD
+  LV Write Access        read/write
+  LV Creation host, time calvin_wang.localdomain, 2026-07-21 20:22:13 +0800
+  LV Status              available
+  # open                 1
+  LV Size                <35.03 GiB
+  Current LE             8967
+  Segments               3
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:0
+
+  --- Logical volume ---
+  LV Path                /dev/rhel/mvd
+  LV Name                mvd
+  VG Name                rhel
+  LV UUID                OIeekk-QXUa-0O3h-u2hl-P123-IOq3-TckYV6
+  LV Write Access        read/write
+  LV Creation host, time calvin_wang.localdomain, 2026-07-21 20:22:13 +0800
+  LV Status              available
+  # open                 1
+  LV Size                5.00 GiB
+  Current LE             1280
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:1
+
+# remove lvm partition and extend disk space to / finished! Please make a snapshot or checkpoint for initial vm OS before and after action!
